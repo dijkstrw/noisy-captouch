@@ -1,0 +1,8 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP DMN3404L
+D n-channel enhancement mode mosfet
+K nmos n-mos n-mosfet transistor
+$ENDCMP
+#
+#End Doc Library

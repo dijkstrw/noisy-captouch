@@ -1,0 +1,359 @@
+EESchema Schematic File Version 2
+LIBS:power
+LIBS:device
+LIBS:conn
+LIBS:linear
+LIBS:regul
+LIBS:74xx
+LIBS:cmos4000
+LIBS:adc-dac
+LIBS:memory
+LIBS:xilinx
+LIBS:microcontrollers
+LIBS:dsp
+LIBS:microchip
+LIBS:analog_switches
+LIBS:motorola
+LIBS:texas
+LIBS:intel
+LIBS:audio
+LIBS:interface
+LIBS:digital-audio
+LIBS:philips
+LIBS:display
+LIBS:cypress
+LIBS:siliconi
+LIBS:opto
+LIBS:atmel
+LIBS:contrib
+LIBS:valves
+LIBS:msp430
+LIBS:capacitive_touch
+LIBS:captouch-cache
+EELAYER 25 0
+EELAYER END
+$Descr A4 11693 8268
+encoding utf-8
+Sheet 1 1
+Title ""
+Date ""
+Rev ""
+Comp ""
+Comment1 ""
+Comment2 ""
+Comment3 ""
+Comment4 ""
+$EndDescr
+$Comp
+L MSP430G2553IPW20 U2
+U 1 1 5739D7AE
+P 5850 2850
+F 0 "U2" H 4350 3450 50  0000 C CNN
+F 1 "MSP430G2553IPW20" H 7100 2300 50  0000 C CNN
+F 2 "Housings_SOIC:SOIC-20_7.5x12.8mm_Pitch1.27mm" H 4400 2300 50  0000 C CIN
+F 3 "" H 5800 2850 50  0000 C CNN
+	1    5850 2850
+	1    0    0    -1  
+$EndComp
+$Comp
+L LED D1
+U 1 1 5739DBD0
+P 8750 2550
+F 0 "D1" H 8750 2650 50  0000 C CNN
+F 1 "LED" H 8750 2450 50  0000 C CNN
+F 2 "Diodes_SMD:SMA_Standard" H 8750 2550 50  0001 C CNN
+F 3 "" H 8750 2550 50  0000 C CNN
+	1    8750 2550
+	-1   0    0    1   
+$EndComp
+$Comp
+L LED D2
+U 1 1 5739DD57
+P 8750 3150
+F 0 "D2" H 8750 3250 50  0000 C CNN
+F 1 "LED" H 8750 3050 50  0000 C CNN
+F 2 "Diodes_SMD:SMA_Standard" H 8750 3150 50  0001 C CNN
+F 3 "" H 8750 3150 50  0000 C CNN
+	1    8750 3150
+	-1   0    0    1   
+$EndComp
+$Comp
+L R R2
+U 1 1 5739DD95
+P 8300 2550
+F 0 "R2" V 8380 2550 50  0000 C CNN
+F 1 "470" V 8300 2550 50  0000 C CNN
+F 2 "Resistors_SMD:R_0805" V 8230 2550 50  0001 C CNN
+F 3 "" H 8300 2550 50  0000 C CNN
+	1    8300 2550
+	0    1    1    0   
+$EndComp
+$Comp
+L R R3
+U 1 1 5739DDE2
+P 8300 3150
+F 0 "R3" V 8380 3150 50  0000 C CNN
+F 1 "227" V 8300 3150 50  0000 C CNN
+F 2 "Resistors_SMD:R_0805" V 8230 3150 50  0001 C CNN
+F 3 "" H 8300 3150 50  0000 C CNN
+	1    8300 3150
+	0    1    1    0   
+$EndComp
+$Comp
+L LD1117S33CTR U1
+U 1 1 5739DE31
+P 2050 1950
+F 0 "U1" H 2050 2200 50  0000 C CNN
+F 1 "LD1117S33CTR" H 2050 2150 50  0000 C CNN
+F 2 "TO_SOT_Packages:SOT-223" H 2050 2050 50  0000 C CNN
+F 3 "" H 2050 1950 50  0000 C CNN
+	1    2050 1950
+	1    0    0    -1  
+$EndComp
+$Comp
+L C C1
+U 1 1 5739DECC
+P 1350 2800
+F 0 "C1" H 1375 2900 50  0000 L CNN
+F 1 "100n" H 1375 2700 50  0000 L CNN
+F 2 "Capacitors_SMD:C_0805" H 1388 2650 50  0001 C CNN
+F 3 "" H 1350 2800 50  0000 C CNN
+	1    1350 2800
+	1    0    0    -1  
+$EndComp
+$Comp
+L C C2
+U 1 1 5739DF2C
+P 2750 2800
+F 0 "C2" H 2775 2900 50  0000 L CNN
+F 1 "10u" H 2775 2700 50  0000 L CNN
+F 2 "Capacitors_SMD:C_1210" H 2788 2650 50  0001 C CNN
+F 3 "" H 2750 2800 50  0000 C CNN
+	1    2750 2800
+	1    0    0    -1  
+$EndComp
+$Comp
+L DMN3404L Q1
+U 1 1 5739E4BE
+P 8950 2100
+F 0 "Q1" H 9300 2150 50  0000 R CNN
+F 1 "DMN3404L" H 9600 2050 50  0000 R CNN
+F 2 "TO_SOT_Packages:SOT-23" H 9150 2200 50  0001 C CNN
+F 3 "" H 8950 2100 50  0000 C CNN
+	1    8950 2100
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	7550 2550 8150 2550
+Wire Wire Line
+	8450 2550 8550 2550
+Wire Wire Line
+	8750 2100 8000 2100
+Wire Wire Line
+	8000 2100 8000 2550
+Connection ~ 8000 2550
+Wire Wire Line
+	8450 3150 8550 3150
+Wire Wire Line
+	8150 3150 7550 3150
+Wire Wire Line
+	9050 3800 900  3800
+Wire Wire Line
+	5850 3800 5850 3500
+Wire Wire Line
+	2050 2200 2050 3900
+Connection ~ 5850 3800
+Wire Wire Line
+	2450 1900 5850 1900
+Wire Wire Line
+	5850 1900 5850 2150
+Wire Wire Line
+	2750 2650 2750 1900
+Connection ~ 2750 1900
+Wire Wire Line
+	2750 2950 2750 3800
+Connection ~ 2750 3800
+Wire Wire Line
+	900  1900 1650 1900
+Wire Wire Line
+	1350 1900 1350 2650
+Wire Wire Line
+	1350 2950 1350 3800
+Connection ~ 2050 3800
+$Comp
+L CONN_01X02 P1
+U 1 1 5739E734
+P 700 2750
+F 0 "P1" H 700 2900 50  0000 C CNN
+F 1 "CONN_01X02" V 800 2750 50  0000 C CNN
+F 2 "w_conn_mkds:mkds_1,5-2" H 700 2750 50  0001 C CNN
+F 3 "" H 700 2750 50  0000 C CNN
+	1    700  2750
+	-1   0    0    1   
+$EndComp
+$Comp
+L CONN_01X03 P3
+U 1 1 5739E80B
+P 10200 1750
+F 0 "P3" H 10200 1950 50  0000 C CNN
+F 1 "CONN_01X03" V 10300 1750 50  0000 C CNN
+F 2 "w_conn_mkds:mkds_1,5-3" H 10200 1750 50  0001 C CNN
+F 3 "" H 10200 1750 50  0000 C CNN
+	1    10200 1750
+	1    0    0    -1  
+$EndComp
+Connection ~ 1350 1900
+Wire Wire Line
+	900  3800 900  2800
+Connection ~ 1350 3800
+Wire Wire Line
+	900  1450 10000 1450
+Wire Wire Line
+	10000 1450 10000 1650
+Wire Wire Line
+	9050 1750 10000 1750
+Wire Wire Line
+	9050 1750 9050 1900
+Wire Wire Line
+	10000 1850 10000 4200
+Wire Wire Line
+	10000 4200 3500 4200
+Wire Wire Line
+	3500 4200 3500 2550
+Wire Wire Line
+	3500 2550 4150 2550
+$Comp
+L +3.3V #PWR01
+U 1 1 5739E5AC
+P 4000 1900
+F 0 "#PWR01" H 4000 1750 50  0001 C CNN
+F 1 "+3.3V" H 4000 2040 50  0000 C CNN
+F 2 "" H 4000 1900 50  0000 C CNN
+F 3 "" H 4000 1900 50  0000 C CNN
+	1    4000 1900
+	1    0    0    -1  
+$EndComp
+$Comp
+L +7V #PWR02
+U 1 1 5739E70B
+P 2050 1450
+F 0 "#PWR02" H 2050 1300 50  0001 C CNN
+F 1 "+7V" H 2050 1590 50  0000 C CNN
+F 2 "" H 2050 1450 50  0000 C CNN
+F 3 "" H 2050 1450 50  0000 C CNN
+	1    2050 1450
+	1    0    0    -1  
+$EndComp
+$Comp
+L GNDREF #PWR03
+U 1 1 5739E78C
+P 2050 3900
+F 0 "#PWR03" H 2050 3650 50  0001 C CNN
+F 1 "GNDREF" H 2050 3750 50  0000 C CNN
+F 2 "" H 2050 3900 50  0000 C CNN
+F 3 "" H 2050 3900 50  0000 C CNN
+	1    2050 3900
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	900  1450 900  2700
+Connection ~ 900  1900
+Wire Wire Line
+	9050 2300 9050 3800
+Wire Wire Line
+	8950 3150 9050 3150
+Connection ~ 9050 3150
+Wire Wire Line
+	8950 2550 9050 2550
+Connection ~ 9050 2550
+Text Notes 1450 5700 0    60   ~ 0
+Notes:\n\nLD1117 must regulate 7V down to 3.3V at 1-3mA total load.\nRegulator does not heat up in tests.\nLD1117 is rated upto 15V with Ptot of 12W, 15 C/W.\n\nDMN3404L has 82mOhm @ Vgs 3V.\n\nLamp takes 7V at 200mA. Cable with dots is positive lead.\n\n
+$Comp
+L R R1
+U 1 1 5739EBAB
+P 4000 2150
+F 0 "R1" V 4080 2150 50  0000 C CNN
+F 1 "47k" V 4000 2150 50  0000 C CNN
+F 2 "Resistors_SMD:R_0805" V 3930 2150 50  0001 C CNN
+F 3 "" H 4000 2150 50  0000 C CNN
+	1    4000 2150
+	-1   0    0    1   
+$EndComp
+Wire Wire Line
+	4000 2000 4000 1900
+Connection ~ 4000 1900
+Wire Wire Line
+	4000 2300 4000 2400
+Wire Wire Line
+	4000 2400 4150 2400
+Text GLabel 7550 2400 2    40   BiDi ~ 0
+TEST
+Text GLabel 4000 2400 0    40   BiDi ~ 0
+/RST
+$Comp
+L CONN_01X04 P2
+U 1 1 5739ED58
+P 6700 5050
+F 0 "P2" H 6700 5300 50  0000 C CNN
+F 1 "CONN_01X04" V 6800 5050 50  0000 C CNN
+F 2 "Pin_Headers:Pin_Header_Angled_1x04" H 6700 5050 50  0001 C CNN
+F 3 "" H 6700 5050 50  0000 C CNN
+	1    6700 5050
+	1    0    0    -1  
+$EndComp
+Text GLabel 6400 5000 0    40   BiDi ~ 0
+TEST
+Text GLabel 6400 5100 0    40   BiDi ~ 0
+/RST
+Wire Wire Line
+	6400 5000 6500 5000
+Wire Wire Line
+	6500 5100 6400 5100
+Wire Wire Line
+	6500 4900 6400 4900
+Wire Wire Line
+	6400 4900 6400 4800
+Wire Wire Line
+	6500 5200 6400 5200
+Wire Wire Line
+	6400 5200 6400 5300
+$Comp
+L +3.3V #PWR04
+U 1 1 5739EF42
+P 6400 4800
+F 0 "#PWR04" H 6400 4650 50  0001 C CNN
+F 1 "+3.3V" H 6400 4940 50  0000 C CNN
+F 2 "" H 6400 4800 50  0000 C CNN
+F 3 "" H 6400 4800 50  0000 C CNN
+	1    6400 4800
+	1    0    0    -1  
+$EndComp
+$Comp
+L GNDREF #PWR05
+U 1 1 5739EFA2
+P 6400 5300
+F 0 "#PWR05" H 6400 5050 50  0001 C CNN
+F 1 "GNDREF" H 6400 5150 50  0000 C CNN
+F 2 "" H 6400 5300 50  0000 C CNN
+F 3 "" H 6400 5300 50  0000 C CNN
+	1    6400 5300
+	1    0    0    -1  
+$EndComp
+$Comp
+L C C3
+U 1 1 5739F103
+P 3150 2800
+F 0 "C3" H 3175 2900 50  0000 L CNN
+F 1 "1n" H 3175 2700 50  0000 L CNN
+F 2 "Capacitors_SMD:C_0805" H 3188 2650 50  0001 C CNN
+F 3 "" H 3150 2800 50  0000 C CNN
+	1    3150 2800
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	3150 2650 3150 1900
+Connection ~ 3150 1900
+Wire Wire Line
+	3150 2950 3150 3800
+Connection ~ 3150 3800
+$EndSCHEMATC

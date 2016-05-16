@@ -1,0 +1,4 @@
+(fp_lib_table
+  (lib (name w_conn_mkds)(type Legacy)(uri "$(KIPRJMOD)/w_conn_mkds.mod")(options "")(descr ""))
+  (lib (name Pin_Headers)(type KiCad)(uri /home/dijkstra/kicad_sources/Pin_Headers.pretty)(options "")(descr ""))
+)
