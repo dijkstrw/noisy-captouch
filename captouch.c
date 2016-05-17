@@ -37,18 +37,19 @@
 
 #define TOUCHPIN BIT0   //P2.0
 #define LED_0 BIT0
+#define LED_1 BIT6
 
 #define LED_OUT P1OUT
 #define LED_DIR P1DIR
 
 /* Define User Configuration values */
 /* Defines WDT SMCLK interval for sensor measurements*/
-#define WDT_meas_setting (DIV_SMCLK_512)
+#define WDT_meas_setting (DIV_SMCLK_8192)
 /* Defines WDT ACLK interval for delay between measurement cycles*/
 #define WDT_delay_setting (DIV_ACLK_512)
 
 /* Sensor settings*/
-#define KEY_LVL     150                     // Defines threshold for a key press
+#define KEY_LVL     380                     // Defines threshold for a key press
 
 /* Definitions for use with the WDT settings*/
 #define DIV_ACLK_32768  (WDT_ADLY_1000)     // ACLK/32768
@@ -68,7 +69,7 @@ unsigned int base_cnt, meas_cnt;
 int delta_cnt, j;
 char key_pressed;
 int cycles = 0;
-int lamp = 1;
+int lamp = 0;
 
 /* System Routines*/
 void measure_count(uint8_t pin);                   // Measures each capacitive sensor
@@ -82,13 +83,25 @@ int main(void) {
 
   IE1 |= WDTIE;                // enable WDT interrupt
 
-  LED_DIR |= LED_0;
-  LED_OUT &= ~LED_0;
+  LED_DIR |= (LED_0 + LED_1);
+  LED_OUT &= ~(LED_0 + LED_1);
 
   UARTConfigure();             // Initialise UART for serial comms
   __bis_SR_register(GIE);      // Enable interrupts
 
+  LED_OUT |= LED_1;
   get_base_count(TOUCHPIN);            // Get baseline
+  delta_cnt = -1;
+  while (delta_cnt < 0) {
+      measure_count(TOUCHPIN);              // measure pin oscillator
+      delta_cnt = base_cnt - meas_cnt;      // Calculate delta: c_change
+      printformat("Baseline: %i Raw count: %i Difference: %i Lamp: %i\r\n",base_cnt,meas_cnt,delta_cnt,lamp);
+
+      // Handle baseline measurement for a baseline decrease
+      if (delta_cnt < 0)                        // If delta negative then raw value is larger than baseline
+          base_cnt = (base_cnt + meas_cnt) >> 1;  // Update baseline average
+  }
+  LED_OUT = 0;
 
   while(1) {
     key_pressed = 0;                      // Assume no keys are pressed
@@ -99,6 +112,7 @@ int main(void) {
     // Handle baseline measurement for a baseline decrease
     if (delta_cnt < 0) {                        // If delta negative then raw value is larger than baseline
         base_cnt = (base_cnt + meas_cnt) >> 1;  // Update baseline average
+        continue;
     }
     if (delta_cnt > KEY_LVL) {                  // Determine if capacitance change is greater than the threshold
         key_pressed = 1;                        // key pressed
@@ -107,14 +121,15 @@ int main(void) {
 
     if (key_pressed) {
         cycles = 1;
-    } else {
-        if (cycles-- == 0){
-            lamp ^=1;
-            if (lamp)
-                LED_OUT |= LED_0;
-            else
-                LED_OUT &= ~LED_0;
-        }
+        continue;
+    }
+
+    if (cycles-- == 0){
+        lamp ^=1;
+        if (lamp)
+            LED_OUT |= LED_0;
+        else
+            LED_OUT &= ~LED_0;
     }
     WDTCTL = WDT_delay_setting;             // Start Watchdog timer for delay. WDT, ACLK, interval timer
     __bis_SR_register(LPM3_bits);           // Put CPU in low power mode 3 to wait for WDT interupt

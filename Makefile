@@ -20,3 +20,6 @@ $(OUT): $(OBJ)
 clean:
 	rm -f $(OBJ) $(OUT)
 
+
+flash:
+	mspdebug rf2500 "prog $(OUT)"
