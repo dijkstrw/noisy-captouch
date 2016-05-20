@@ -74,9 +74,18 @@ int16_t delta_cnt, j;
 uint8_t lamp = 0;
 uint8_t state = LAMP_IDLE;
 
-/* System Routines*/
-static void get_base_count(uint8_t pin);
-void measure_count(uint8_t pin);                   // Measures each capacitive sensor
+#define SAMPLES_DIV 4
+#define SAMPLES     (1 << SAMPLES_DIV)
+
+struct window {
+    uint32_t total;
+    uint16_t avg;
+    uint8_t current;
+    uint8_t startup;
+    uint16_t x[SAMPLES];
+} window;
+
+static uint8_t detect(uint8_t pin);
 
 int main(void) {
     WDTCTL = WDTPW + WDTHOLD;    // Stop WDT
@@ -94,42 +103,33 @@ int main(void) {
     __bis_SR_register(GIE);      // Enable interrupts
 
     LED_OUT |= LED_1;
-    get_base_count(TOUCHPIN);            // Get baseline
-    delta_cnt = -1;
-    while (delta_cnt < 0) {
-        measure_count(TOUCHPIN);              // measure pin oscillator
-        delta_cnt = base_cnt - meas_cnt;      // Calculate delta: c_change
-        xprintf("%04x-%04x=%04x =>L%04x\r\n",base_cnt,meas_cnt,delta_cnt,lamp);
+    window.startup = 1;
+    window.current = 0;
+    window.total = 0;
 
-        // Handle baseline measurement for a baseline decrease
-        if (delta_cnt < 0)                        // If delta negative then raw value is larger than baseline
-            base_cnt = (base_cnt + meas_cnt) >> 1;  // Update baseline average
+    while (window.startup) {
+        detect(TOUCHPIN);
+        xprintf("%04x-%04x=%04x =>L%04x\r\n",
+                window.avg,
+                window.x[window.current],
+                (window.avg - window.x[window.current]),
+                lamp);
     }
     LED_OUT = 0;
     state = LAMP_IDLE;
 
     for (;;) { /* FOREVER */
-        measure_count(TOUCHPIN);
-        delta_cnt = base_cnt - meas_cnt;
-        xprintf("%04x-%04x=%04x =>L%04x\r\n",base_cnt, meas_cnt, delta_cnt, lamp);
-
-        if (delta_cnt < 0) {
-            /* 1. base count update if measured value is larger than our base */
-            base_cnt = (base_cnt + meas_cnt) >> 1;
-            continue;
-        }
-
-        if (delta_cnt > KEY_LVL) {
-            /* 2. determine if lamp is touched, if so, remeasure */
+        if (detect(TOUCHPIN)) {
+            /* 1. determine if lamp is touched, if so, remeasure */
             state = LAMP_TOUCHED;
             continue;
         }
 
         if (state == LAMP_TOUCHED) {
-            /* 3. determine if lamp was released, if so wait / debounce one wdt interval */
+            /* 2. determine if lamp was released, if so wait / debounce one wdt interval */
             state = LAMP_ACTION;
         } else if (state == LAMP_ACTION) {
-            /* 4. determine if lamp was released and debounced, if so act */
+            /* 3. determine if lamp was released and debounced, if so act */
             lamp ^=1;
             if (lamp)
                 LED_OUT |= LED_0;
@@ -138,22 +138,21 @@ int main(void) {
             state = LAMP_IDLE;
         }
 
+        xprintf("%04x-%04x=%04x =>L%04x\r\n",
+                window.avg,
+                window.x[window.current],
+                (window.avg - window.x[window.current]),
+                lamp);
+
         WDTCTL = WDT_delay_setting;
         __bis_SR_register(LPM3_bits);
     }
 }
 
-void get_base_count(uint8_t pin) {
-    uint8_t i;
-    base_cnt = 0;
-    for (i = (1 << 4); i > 0; i--) {
-        measure_count(pin);
-        base_cnt = meas_cnt + base_cnt;
-    }
-    base_cnt = base_cnt >> 4;
-}
+static uint16_t
+measure(uint8_t pin) {
+    uint16_t result;
 
-void measure_count(uint8_t pin) {
     /* Ground the input */
     P2SEL &= ~pin;
     P2DIR &= ~pin;
@@ -179,10 +178,45 @@ void measure_count(uint8_t pin) {
     TA0CTL |= TACLR;                        // Reset Timer_A (TAR) to zero
     __bis_SR_register(LPM0_bits + GIE);     // Wait for WDT interrupt
     TA0CCTL1 ^= CCIS0;                      // Toggle the counter capture input to capture count using TACCR1
-    meas_cnt = TACCR1;                      // Save result
+    result = TACCR1;
     WDTCTL = WDTPW + WDTHOLD;               // Stop watchdog timer
     P2SEL2 &= ~ pin;                        // Disable Pin Oscillator function
 
+    return result;
+}
+
+static uint8_t
+detect(uint8_t pin)
+{
+    uint8_t c = window.current;
+    uint16_t m = measure(pin);
+    int16_t delta;
+
+    c = (c + 1) % SAMPLES;
+    window.current = c;
+
+    if (window.startup) {
+        window.x[c] = m;
+        window.total += window.x[c];
+        if (c == 0) {
+            window.startup = 0;
+            window.avg = (window.total >> SAMPLES_DIV);
+        }
+    } else {
+        delta = window.avg - m;
+
+        if ((-0xff < delta) && (delta < 0xff)) {
+            window.total -= window.x[c];
+            window.x[c] = m;
+            window.total += m;
+            window.avg = (window.total >> SAMPLES_DIV);
+        }
+
+        if (delta > KEY_LVL)
+            return 1;
+    }
+
+    return 0;
 }
 
 #pragma vector=WDT_VECTOR

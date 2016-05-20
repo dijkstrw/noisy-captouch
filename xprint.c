@@ -54,10 +54,10 @@ xvprintf(const char *fmt, va_list va)
 
     while ((ch = *(fmt++))) {
         if (ch == '\n') {
-            uart_send_char('\n');
-            uart_send_char('\r');
+            uart_putc('\n');
+            uart_putc('\r');
         } else if (ch != '%') {
-            uart_send_char(ch);
+            uart_putc(ch);
         } else {
             char zero_pad = 0;
             char *ptr;
@@ -92,7 +92,7 @@ xvprintf(const char *fmt, va_list va)
                 break;
 
             case 'c' :
-                uart_send_char((char)(va_arg(va, int)));
+                uart_putc((char)(va_arg(va, int)));
                 break;
 
             case 's' :
@@ -101,7 +101,7 @@ xvprintf(const char *fmt, va_list va)
                 break;
 
             default:
-                uart_send_char(ch);
+                uart_putc(ch);
                 break;
             }
         }
