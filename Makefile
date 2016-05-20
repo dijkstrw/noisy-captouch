@@ -1,25 +1,10 @@
-CC=msp430-gcc
-CFLAGS  =-Os -Wall -mmcu=msp430g2553
+BINARY=captouch
+OBJS=uart.o xprint.o
 
-OBJ = $(patsubst %.c,.obj/%.o,$(wildcard *.c)) 
-OUT = captouch.elf
+ARCH_FLAGS=-mmcu=msp430g2452
+#ARCH_FLAGS=-mmcu=msp430g2553
+MSPDEBUG_DRIVER=rf2500
+include msp430.rules.mk
 
-default: dirs $(OUT)
-
-dirs: dot_obj
-dot_obj:
-	if [ ! -e .obj ]; then mkdir .obj; fi;
-
-# The following are for the Master
-.obj/%.o: %.c
-	$(CC) -c $< -o $@ $(CFLAGS)
-
-$(OUT): $(OBJ)
-	$(CC)  $(CFLAGS) -o $(OUT) $(OBJ)
-
-clean:
-	rm -f $(OBJ) $(OUT)
-
-
-flash:
-	mspdebug rf2500 "prog $(OUT)"
+size: $(BINARY).elf
+	size $<

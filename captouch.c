@@ -21,19 +21,20 @@
 //            |                 |
 //            |                 |
 //
-//  Modified for Energia and GCC
+//  Based on source from:
 //  Benn Thomsen
 //  March 2016
 //
-//  Based on source from
+//  in turn based on:
 //  Brandon Elliott/D. Dang
 //  Texas Instruments Inc.
 //  November 2010
 //******************************************************************************
 
-#include "UART.h"
-#include "print.h"
-#include <inttypes.h>
+#include <stdint.h>
+#include <msp430.h>
+#include "uart.h"
+#include "xprint.h"
 
 #define TOUCHPIN BIT0   //P2.0
 #define LED_0 BIT0
@@ -49,7 +50,7 @@
 #define WDT_delay_setting (DIV_ACLK_512)
 
 /* Sensor settings*/
-#define KEY_LVL     380                     // Defines threshold for a key press
+#define KEY_LVL     600                     // Defines threshold for a key press
 
 /* Definitions for use with the WDT settings*/
 #define DIV_ACLK_32768  (WDT_ADLY_1000)     // ACLK/32768
@@ -61,96 +62,110 @@
 #define DIV_SMCLK_512   (WDT_MDLY_0_5)      // SMCLK/512
 #define DIV_SMCLK_64    (WDT_MDLY_0_064)    // SMCLK/64
 
-#define TOUCH_BUTTON 0
-#define TOUCH_PROXIMITY 1
+enum {
+    LAMP_IDLE = 0,
+    LAMP_TOUCHED,
+    LAMP_ACTION
+};
 
 // Global variables for sensing
-unsigned int base_cnt, meas_cnt;
-int delta_cnt, j;
-char key_pressed;
-int cycles = 0;
-int lamp = 0;
+uint16_t base_cnt, meas_cnt;
+int16_t delta_cnt, j;
+uint8_t lamp = 0;
+uint8_t state = LAMP_IDLE;
 
 /* System Routines*/
+static void get_base_count(uint8_t pin);
 void measure_count(uint8_t pin);                   // Measures each capacitive sensor
 
 int main(void) {
-  WDTCTL = WDTPW + WDTHOLD;    // Stop WDT
-  DCOCTL = 0;                  // Select lowest DCOx and MODx settings
-  BCSCTL1 = CALBC1_1MHZ;       // Set DCO to 1MHz
-  DCOCTL = CALDCO_1MHZ;
-  BCSCTL3 |= LFXT1S_2;         // LFXT1 = VLO 12kHz
+    WDTCTL = WDTPW + WDTHOLD;    // Stop WDT
+    DCOCTL = 0;                  // Select lowest DCOx and MODx settings
+    BCSCTL1 = CALBC1_1MHZ;       // Set DCO to 1MHz
+    DCOCTL = CALDCO_1MHZ;
+    BCSCTL3 |= LFXT1S_2;         // LFXT1 = VLO 12kHz
 
-  IE1 |= WDTIE;                // enable WDT interrupt
+    IE1 |= WDTIE;                // enable WDT interrupt
 
-  LED_DIR |= (LED_0 + LED_1);
-  LED_OUT &= ~(LED_0 + LED_1);
+    LED_DIR |= (LED_0 + LED_1);
+    LED_OUT &= ~(LED_0 + LED_1);
 
-  UARTConfigure();             // Initialise UART for serial comms
-  __bis_SR_register(GIE);      // Enable interrupts
+    uart_configure();             // Initialise UART for serial comms
+    __bis_SR_register(GIE);      // Enable interrupts
 
-  LED_OUT |= LED_1;
-  get_base_count(TOUCHPIN);            // Get baseline
-  delta_cnt = -1;
-  while (delta_cnt < 0) {
-      measure_count(TOUCHPIN);              // measure pin oscillator
-      delta_cnt = base_cnt - meas_cnt;      // Calculate delta: c_change
-      printformat("Baseline: %i Raw count: %i Difference: %i Lamp: %i\r\n",base_cnt,meas_cnt,delta_cnt,lamp);
+    LED_OUT |= LED_1;
+    get_base_count(TOUCHPIN);            // Get baseline
+    delta_cnt = -1;
+    while (delta_cnt < 0) {
+        measure_count(TOUCHPIN);              // measure pin oscillator
+        delta_cnt = base_cnt - meas_cnt;      // Calculate delta: c_change
+        xprintf("%04x-%04x=%04x =>L%04x\r\n",base_cnt,meas_cnt,delta_cnt,lamp);
 
-      // Handle baseline measurement for a baseline decrease
-      if (delta_cnt < 0)                        // If delta negative then raw value is larger than baseline
-          base_cnt = (base_cnt + meas_cnt) >> 1;  // Update baseline average
-  }
-  LED_OUT = 0;
-
-  while(1) {
-    key_pressed = 0;                      // Assume no keys are pressed
-    measure_count(TOUCHPIN);              // measure pin oscillator
-    delta_cnt = base_cnt - meas_cnt;      // Calculate delta: c_change
-    printformat("Baseline: %i Raw count: %i Difference: %i Lamp: %i\r\n",base_cnt,meas_cnt,delta_cnt,lamp);
-
-    // Handle baseline measurement for a baseline decrease
-    if (delta_cnt < 0) {                        // If delta negative then raw value is larger than baseline
-        base_cnt = (base_cnt + meas_cnt) >> 1;  // Update baseline average
-        continue;
+        // Handle baseline measurement for a baseline decrease
+        if (delta_cnt < 0)                        // If delta negative then raw value is larger than baseline
+            base_cnt = (base_cnt + meas_cnt) >> 1;  // Update baseline average
     }
-    if (delta_cnt > KEY_LVL) {                  // Determine if capacitance change is greater than the threshold
-        key_pressed = 1;                        // key pressed
-        UARTPrintln("Presense detected");
-    } else key_pressed = 0;
+    LED_OUT = 0;
+    state = LAMP_IDLE;
 
-    if (key_pressed) {
-        cycles = 1;
-        continue;
-    }
+    for (;;) { /* FOREVER */
+        measure_count(TOUCHPIN);
+        delta_cnt = base_cnt - meas_cnt;
+        xprintf("%04x-%04x=%04x =>L%04x\r\n",base_cnt, meas_cnt, delta_cnt, lamp);
 
-    if (cycles-- == 0){
-        lamp ^=1;
-        if (lamp)
-            LED_OUT |= LED_0;
-        else
-            LED_OUT &= ~LED_0;
-    }
-    WDTCTL = WDT_delay_setting;             // Start Watchdog timer for delay. WDT, ACLK, interval timer
-    __bis_SR_register(LPM3_bits);           // Put CPU in low power mode 3 to wait for WDT interupt
+        if (delta_cnt < 0) {
+            /* 1. base count update if measured value is larger than our base */
+            base_cnt = (base_cnt + meas_cnt) >> 1;
+            continue;
+        }
+
+        if (delta_cnt > KEY_LVL) {
+            /* 2. determine if lamp is touched, if so, remeasure */
+            state = LAMP_TOUCHED;
+            continue;
+        }
+
+        if (state == LAMP_TOUCHED) {
+            /* 3. determine if lamp was released, if so wait / debounce one wdt interval */
+            state = LAMP_ACTION;
+        } else if (state == LAMP_ACTION) {
+            /* 4. determine if lamp was released and debounced, if so act */
+            lamp ^=1;
+            if (lamp)
+                LED_OUT |= LED_0;
+            else
+                LED_OUT &= ~LED_0;
+            state = LAMP_IDLE;
+        }
+
+        WDTCTL = WDT_delay_setting;
+        __bis_SR_register(LPM3_bits);
     }
 }
 
 void get_base_count(uint8_t pin) {
-// Take 16 measurements and obtain an average.
-    unsigned int i;
+    uint8_t i;
     base_cnt = 0;
-    for (i = 16; i > 0; i--) {
+    for (i = (1 << 4); i > 0; i--) {
         measure_count(pin);
         base_cnt = meas_cnt + base_cnt;
     }
-    base_cnt = base_cnt >> 4;    // Divide by 16
+    base_cnt = base_cnt >> 4;
 }
 
 void measure_count(uint8_t pin) {
+    /* Ground the input */
+    P2SEL &= ~pin;
+    P2DIR &= ~pin;
+    P2OUT &= ~pin;
+    P2REN |= pin;
+    P2REN &= ~pin;
+    WDTCTL = WDT_meas_setting;              // Start WDT, Clock Source: ACLK, Interval timer
+    __bis_SR_register(LPM0_bits + GIE);     // Wait for WDT interrupt
 
     TA0CTL = TASSEL_3 + MC_2;           // INCLK from Pin oscillator, continous count mode to 0xFFFF
     TA0CCTL1 = CM_3 + CCIS_2 + CAP;     // Capture on Rising and Falling Edge,Capture input GND,Capture mode
+
 
     /*Configure Ports for relaxation oscillator*/
     /*The P2SEL2 register allows Timer_A to receive it's clock from a GPIO*/
@@ -167,6 +182,7 @@ void measure_count(uint8_t pin) {
     meas_cnt = TACCR1;                      // Save result
     WDTCTL = WDTPW + WDTHOLD;               // Stop watchdog timer
     P2SEL2 &= ~ pin;                        // Disable Pin Oscillator function
+
 }
 
 #pragma vector=WDT_VECTOR
