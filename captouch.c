@@ -1,35 +1,37 @@
-//******************************************************************************
-//  MSP430G2553 Demo - Capacitive Touch, Pin Oscillator Method, 1 button
-//
-//  Description: Basic 1-button input using the built-in pin oscillation feature
-//  on GPIO input structure. PinOsc signal feed into TA0CLK. WDT interval is used
-//  to gate the measurements. Difference in measurements indicate button touch.
-//
-//  ACLK = VLO = 12kHz, MCLK = SMCLK = 1MHz DCO
-//
-//               MSP430G2xx3
-//             -----------------
-//         /|\|              XIN|-
-//          | |                 |
-//          --|RST          XOUT|-
-//            |                 |
-//            |             P2.0|<--Capacitive Touch Input 1
-//            |                 |
-//  LED 2  <--|P1.6             |
-//            |                 |
-//  LED 1  <--|P1.0             |
-//            |                 |
-//            |                 |
-//
-//  Based on source from:
-//  Benn Thomsen
-//  March 2016
-//
-//  in turn based on:
-//  Brandon Elliott/D. Dang
-//  Texas Instruments Inc.
-//  November 2010
-//******************************************************************************
+/*
+ * MSP430 Capacitive Lamp Control
+ *
+ * Toggling a lamp by touching its plastic base.
+ *
+ *
+ * Description: Basic 1-button input using the built-in pin oscillation feature
+ * on GPIO input structure. PinOsc signal feed into TA0CLK. WDT interval is
+ * used to gate the measurements. Difference in measurements indicate button
+ * touch.
+ *
+ * ACLK = VLO = 12kHz, MCLK = SMCLK = 1MHz DCO
+ *
+ *               MSP430G2xxx
+ *             -----------------
+ *         /|\|              XIN|- UART
+ *          | |                 |
+ *          --|RST          XOUT|-
+ *            |                 |
+ *            |             P2.0|<--Capacitive Touch Input 1
+ *            |                 |
+ *  LED 2  <--|P1.6             |
+ *            |                 |
+ *  LED 1  <--|P1.0             |
+ *            |                 |
+ *            |                 |
+ *
+ *
+ * Based on source from:
+ * Benn Thomsen, March 2016
+ *
+ * In turn based on:
+ * Brandon Elliott/D. Dang, Texas Instruments Inc., November 2010
+ */
 
 #include <stdint.h>
 #include <msp430.h>
@@ -62,16 +64,13 @@
 #define DIV_SMCLK_512   (WDT_MDLY_0_5)      // SMCLK/512
 #define DIV_SMCLK_64    (WDT_MDLY_0_064)    // SMCLK/64
 
+uint8_t lamp = 0;
+
 enum {
     LAMP_IDLE = 0,
     LAMP_TOUCHED,
     LAMP_ACTION
 };
-
-// Global variables for sensing
-uint16_t base_cnt, meas_cnt;
-int16_t delta_cnt, j;
-uint8_t lamp = 0;
 uint8_t state = LAMP_IDLE;
 
 #define SAMPLES_DIV 4
@@ -124,7 +123,6 @@ int main(void) {
             state = LAMP_TOUCHED;
             continue;
         }
-
         if (state == LAMP_TOUCHED) {
             /* 2. determine if lamp was released, if so wait / debounce one wdt interval */
             state = LAMP_ACTION;
