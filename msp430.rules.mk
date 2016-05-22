@@ -7,13 +7,14 @@ PREFIX		?= msp430
 CC		:= $(PREFIX)-gcc
 OBJCOPY		:= $(PREFIX)-objcopy
 OBJDUMP		:= $(PREFIX)-objdump
+SIZE		:= $(PREFIX)-size
 MSPDEBUG        := mspdebug
 MSPDEBUG_DRIVER ?= rf2500
 
 OBJS		+= $(BINARY).o
 CFLAGS 		=-Os -g -Wall
 
-.SUFFIXES: .elf .bin .hex .srec .list .map .images
+.SUFFIXES: .elf .list .map
 .SECONDEXPANSION:
 .SECONDARY:
 
@@ -28,9 +29,9 @@ size: $(BINARY).size
 	@printf "  CC      $(*).c\n"
 	$(Q)$(CC) $(CFLAGS) $(ARCH_FLAGS) -o $(*).o -c $(*).c
 
-%.elf: $(OBJS)
+%.elf %.map: $(OBJS)
 	@printf "  LD      $(*).elf\n"
-	$(Q)$(CC) $(CFLAGS) $(ARCH_FLAGS) -o $(*).elf $(OBJS)
+	$(Q)$(CC) $(CFLAGS) $(ARCH_FLAGS) -Wl,-Map,$(*).map -o $(*).elf $(OBJS)
 
 %.list: %.elf
 	@printf "  OBJDUMP $(*).list\n"
@@ -46,7 +47,7 @@ size: $(BINARY).size
 
 clean:
 	@printf "  CLEAN\n"
-	$(Q)$(RM) *.o *.d *.elf *.bin *.hex *.srec *.list *.map
+	$(Q)$(RM) *.o *.elf *.list *.map
 
 
-.PHONY: clean elf list
+.PHONY: clean elf list flash size

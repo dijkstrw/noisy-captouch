@@ -64,8 +64,8 @@ uart_putc(uint8_t c)
     CCR0 = TAR;              /* Initialize compare register */
 
     CCR0 += BIT_TIME;        /* Set time till first bit */
-    tx |= 0x100;             /* Add stop bit to transmit byte (which is logical 1) */
-    tx <<= 1;                /* Add start bit (which is logical 0) */
+    tx |= 0x100;             /* Add stop bit to transmit byte */
+    tx <<= 1;                /* Add start bit */
 
     CCTL0 = CCIS0 + OUTMOD0 + CCIE; /* Set signal, initial value, enable int */
 
