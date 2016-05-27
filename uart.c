@@ -9,8 +9,8 @@
 #include <msp430.h>
 #include "uart.h"
 
-#define TXD BIT1 // TXD on P1.1
-#define RXD BIT2 // RXD on P1.2
+#define RXD BIT1
+#define TXD BIT2
 
 #ifdef __MSP430_HAS_USCI__
 
@@ -19,7 +19,7 @@
 void
 uart_configure(void)
 {
-    P1SEL = TXD + RXD ;  /* P1.1 = RXD, P1.2=TXD */
+    P1SEL = TXD + RXD;
     P1SEL2 = TXD + RXD;
     UCA0CTL1 |= UCSSEL_2;  /* Use SMCLK */
     UCA0BR0 = 104;         /* Set baud rate to 9600 with 1MHz clock (Data Sheet 15.3.13) */
@@ -48,8 +48,8 @@ static uint16_t tx;
 void
 uart_configure(void)
 {
-    P1SEL |= TXD;
-    P1DIR |= TXD;
+    P1SEL |= TXD + RXD;
+    P1DIR |= TXD + RXD;
 }
 
 void
@@ -67,7 +67,7 @@ uart_putc(uint8_t c)
     tx |= 0x100;             /* Add stop bit to transmit byte */
     tx <<= 1;                /* Add start bit */
 
-    CCTL0 = CCIS0 + OUTMOD0 + CCIE; /* Set signal, initial value, enable int */
+    CCTL0 = CCIS1 + OUTMOD0 + CCIE; /* Set signal, initial value, enable int */
 
     while ( CCTL0 & CCIE );  /* Wait for previous TX completion */
 }
