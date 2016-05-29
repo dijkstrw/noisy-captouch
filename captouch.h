@@ -18,6 +18,21 @@
 #define WDT_MEASURE_INTERVAL WDT_MDLY_8
 #define WDT_DELAY_INTERVAL   WDT_ADLY_43
 
+/*
+ * Total idle loop = 2 x measure interval + 1 x delay interval
+ */
+#define LOOPTIME              ((2*8)+43)
+#define LOOPS_1S              (1000 / LOOPTIME)
+
+/*
+ * Auto turn off in seconds. Set to 0 to disable auto turn off
+ */
+#define AUTO_OFF_S            7200
+
+#if AUTO_OFF_S > 0xffff
+#error Maximum AUTO_OFF_S is 65535
+#endif
+
 enum {
     LAMP_IDLE = 0,
     LAMP_TOUCHED,

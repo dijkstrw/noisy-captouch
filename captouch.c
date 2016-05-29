@@ -62,10 +62,30 @@
 
 uint8_t lamp = 0;
 uint8_t state = LAMP_IDLE;
+
+uint16_t loops = 0;
+uint16_t timer = 0;
 window_t window;
 
+static void
+lamp_on(void)
+{
+    LED_OUT |= LAMP_PIN;
+    timer = AUTO_OFF_S;
+    lamp = 1;
+}
+
+static void
+lamp_off(void)
+{
+    LED_OUT &= ~LAMP_PIN;
+    timer = 0;
+    lamp = 0;
+}
+
 int
-main(void) {
+main(void)
+{
     WDTCTL = WDTPW + WDTHOLD;    /* Stop WDT */
     DCOCTL = 0;                  /* Select lowest DCOx and MODx settings */
     BCSCTL1 = CALBC1_1MHZ;       /* Set DCO to 1MHz */
@@ -106,16 +126,26 @@ main(void) {
             /* 2. determine if lamp was released, if so wait / debounce one wdt interval */
             state = LAMP_ACTION;
         } else if (state == LAMP_ACTION) {
-            /* 3. all done, actuate */
+            /* 3. debounced, actuate */
             lamp ^=1;
             if (lamp)
-                LED_OUT |= LAMP_PIN;
+                lamp_on();
             else
-                LED_OUT &= ~LAMP_PIN;
+                lamp_off();
             state = LAMP_IDLE;
         }
+        if ((state == LAMP_IDLE) && timer) {
+            loops++;
+            while (loops > LOOPS_1S) {
+                loops -= LOOPS_1S;
+                timer--;
+            }
+            if (timer == 0)
+                lamp_off();
+        }
 
-        xprintf("%04x-%04x=%04x =>L%01x\r\n",
+        xprintf("%04x: %04x-%04x=%04x =>L%01x\r\n",
+                timer,
                 window.avg,
                 window.x[window.current],
                 (window.avg - window.x[window.current]),
