@@ -1,4 +1,4 @@
-update=Mon May 16 17:06:29 2016
+update=Fri Jun  3 08:49:22 2016
 version=1
 last_client=kicad
 [pcbnew]
@@ -59,3 +59,13 @@ LibName27=contrib
 LibName28=valves
 LibName29=msp430
 LibName30=capacitive_touch
+[schematic_editor]
+version=1
+PageLayoutDescrFile=
+PlotDirectoryName=
+SubpartIdSeparator=0
+SubpartFirstId=65
+NetFmtName=
+SpiceForceRefPrefix=0
+SpiceUseNetNumbers=0
+LabSize=60

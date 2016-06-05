@@ -1,9 +1,9 @@
 (kicad_pcb (version 4) (host pcbnew 4.0.2-stable)
 
   (general
-    (links 0)
+    (links 32)
     (no_connects 0)
-    (area 51.924999 18.924999 78.075001 59.075001)
+    (area 41.4 15.375 87.375001 60.309103)
     (thickness 1.6)
     (drawings 42)
     (tracks 120)
