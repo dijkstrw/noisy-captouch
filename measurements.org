@@ -1,0 +1,12 @@
+Sometimes the current captouch will suddenly light by itself. I think this is
+because of atmospheric changes. The current sensor has no ground plane and is
+very sensitive to other fields.
+
+After measuring for some hours:
+- I see a recurring pattern every 40 measurements. It looks like half of a
+  sine, both above and below the mean. My guess at this time is that this is
+  the ac 50Hz humm that we measure, and because our measurement is at 17Hz we
+  sample a different part of the ac wave every measurement.
+
+I'm guessing that including a ground plane to improve noise behavior is an
+important next step.
