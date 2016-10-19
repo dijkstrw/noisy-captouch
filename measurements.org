@@ -8,5 +8,16 @@ After measuring for some hours:
   the ac 50Hz humm that we measure, and because our measurement is at 17Hz we
   sample a different part of the ac wave every measurement.
 
-I'm guessing that including a ground plane to improve noise behavior is an
-important next step.
+Some thoughts:
+- Include a ground plane under the sensor to improve noise behavior
+
+- Add a high pass filter to filter out any low tones. Note that although our
+  "measurement" is at 17Hz, the output pin is toggled at 1Mhz during 8ms. This
+  means that most any high pass filter above 50Hz is ok.
+
+  f_c = 1 / (2 pi RC)
+
+  Taking for instance a R of 470k and a C of 470pF yields a f_c of 28kHz. With
+  this filter the 50Hz hum is gone.
+
+  Schematic has been updated with a 805 places for a R C in the sensor path.
