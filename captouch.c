@@ -5,14 +5,12 @@
  *
  * Description: Basic 1-button input using the built-in pin oscillation feature
  * on GPIO input structure. PinOsc signal feed into TA0CLK. WDT interval is
- * used to gate the measurements. Difference in measurements indicate button
- * touch.
+ * used to gate the measurements. A large difference in measurements indicate
+ * button touch.
  *
  * Use an averaging window of SAMPLES as a moving baseline to compare incoming
- * "sensor" readings. The baseline has notion of a maximum drift level that
- * allows for small variations in sensor reading because of environmental
- * changes. E.g. Athmospheric changes will cause false positives due to drift
- * otherwise.
+ * "sensor" readings. This makes a large difference for touch stand out, while
+ * allowing for a gradual drift to accomodate for athmospheric changes.
  *
  * ACLK = VLO = 12kHz, MCLK = SMCLK = 1MHz DCO
  *
@@ -25,7 +23,7 @@
  *            |             P2.0|<--Capacitive Touch Input 1
  *            |                 |
  *  LED 2  <--|P1.6             |
- *  boot indication             |
+ *  window reset indication     |
  *  LED 1  <--|P1.0             |
  *  lamp driver/indication      |
  *            |                 |
@@ -43,35 +41,25 @@
 #include "xprint.h"
 
 /*
- * Sensor settings
- *
- * The sensor needs to sense
- * - large capacitance changes (to ground) -> which indicate a presence
- * - small changes due to atmospheric conditions
- *
- * The large changes are called the KEY level below. Anything small,
- * i.e. smaller than the DRIFT level is used to adjust the comparison
- * window. Items between DRIFT and KEY are ignored.
- *
- * Note finally that drifting is bound in the positive direction, but not in
- * the negative direction. This allows our average to quickly recover to a more
- * sensitve position.
+ * Pin oscillations are counted on the capacitive touch pin. If more
+ * capacitance is present, the frequency measured (the number of pin
+ * oscillations seen) drop. This defines by how much they must drop when
+ * compared to the moving average before we indicate that a person has keyed
+ * the sensor.
  */
-#define MAX_DRIFT_LEVEL 0xff
-#define KEY_LEVEL       0x260
+#define KEY_LEVEL       0x200
 
-uint8_t lamp = 0;
-uint8_t state = LAMP_IDLE;
+uint8_t lamp;
+uint8_t state;
 
 uint16_t loops = 0;
-uint16_t timer = 0;
+int16_t timer = 0;
 window_t window;
 
 static void
 lamp_on(void)
 {
     LED_OUT |= LAMP_PIN;
-    timer = AUTO_OFF_S;
     lamp = 1;
 }
 
@@ -79,13 +67,14 @@ static void
 lamp_off(void)
 {
     LED_OUT &= ~LAMP_PIN;
-    timer = 0;
     lamp = 0;
 }
 
 int
 main(void)
 {
+    uint8_t touch;
+
     WDTCTL = WDTPW + WDTHOLD;    /* Stop WDT */
     DCOCTL = 0;                  /* Select lowest DCOx and MODx settings */
     BCSCTL1 = CALBC1_1MHZ;       /* Set DCO to 1MHz */
@@ -100,51 +89,69 @@ main(void)
     uart_configure();
     _BIS_SR(GIE);
 
-    LED_OUT |= BOOT_PIN;
-    window.startup = 1;
-    window.current = 0;
-    window.total = 0;
-
-    while (window.startup) {
-        detect(TOUCH_PIN);
-        xprintf("%04x-%04x=%04x =>L%01x\r\n",
-                window.avg,
-                window.x[window.current],
-                (window.avg - window.x[window.current]),
-                lamp);
-    }
-    LED_OUT = 0;
-    state = LAMP_IDLE;
+    reset_window();
+    lamp = 0;
+    state = LAMP_RESET;
 
     for (;;) { /* FOREVER */
-        if (detect(TOUCH_PIN)) {
-            /* 1. determine if lamp is touched, if so, remeasure */
-            state = LAMP_TOUCHED;
-            continue;
-        }
-        if (state == LAMP_TOUCHED) {
-            /* 2. determine if lamp was released, if so wait / debounce one wdt interval */
-            state = LAMP_ACTION;
-        } else if (state == LAMP_ACTION) {
-            /* 3. debounced, actuate */
-            lamp ^=1;
-            if (lamp)
-                lamp_on();
-            else
-                lamp_off();
-            state = LAMP_IDLE;
-        }
-        if ((state == LAMP_IDLE) && timer) {
-            loops++;
-            while (loops > LOOPS_1S) {
-                loops -= LOOPS_1S;
-                timer--;
+        switch (state) {
+        case LAMP_RESET:
+            /* 0. Reset measurement window to ensure correct detection for next touch */
+            if (window.startup) {
+                LED_OUT |= BOOT_PIN;
+                detect(TOUCH_PIN);
+                xprintf("%04x-%04x=%04x =>L%01x\r\n",
+                        window.avg,
+                        window.x[window.current],
+                        (window.avg - window.x[window.current]),
+                        lamp);
+                LED_OUT &= ~BOOT_PIN;
+                continue;
+            } else {
+                state = LAMP_IDLE;
             }
-            if (timer == 0)
+            break;
+
+        case LAMP_IDLE:
+            /* 1. Determine if lamp is touched */
+            touch = detect(TOUCH_PIN);
+            if (lamp) {
+                if (timer > 0) {
+                    loops++;
+                    while (loops > LOOPS_1S) {
+                        loops -= LOOPS_1S;
+                        timer--;
+                    }
+                } else {
+                    lamp_off();
+                }
+            } else {
+                timer = 0;
+            }
+
+            if (touch) {
+                state = LAMP_ACTION;
+            }
+            break;
+
+        case LAMP_ACTION:
+            /* 2. Actuate */
+            lamp ^=1;
+            if (lamp) {
+                lamp_on();
+                timer = AUTO_OFF_S;
+            } else {
                 lamp_off();
+                timer = 0;
+            }
+            reset_window();
+            state = LAMP_RESET;
+            break;
         }
 
-        xprintf("%04x: %04x-%04x=%04x =>L%01x\r\n",
+
+        xprintf("S%01x %04x: %04x-%04x=%04x =>L%01x\r\n",
+                state,
                 timer,
                 window.avg,
                 window.x[window.current],
@@ -154,6 +161,13 @@ main(void)
         WDTCTL = WDT_DELAY_INTERVAL;
         LPM3;
     }
+}
+
+static void
+reset_window() {
+    window.startup = 1;
+    window.current = 0;
+    window.total = 0;
 }
 
 static uint16_t
@@ -172,7 +186,6 @@ measure(uint8_t pin) {
     /* Configure timer to capture oscillator */
     TA0CTL = TASSEL_3 + MC_2;           /* INCLK from Pin oscillator, continous count mode to 0xFFFF */
     TA0CCTL1 = CM_3 + CCIS_2 + CAP;     /* Capture on Rising and Falling Edge,Capture input GND,Capture mode */
-
 
     /*
      * Configure Ports for relaxation oscillator
@@ -214,15 +227,13 @@ detect(uint8_t pin)
     } else {
         delta = window.avg - m;
 
-        if (delta < MAX_DRIFT_LEVEL) {
-            window.total -= window.x[c];
-            window.x[c] = m;
-            window.total += m;
-            window.avg = (window.total >> SAMPLES_DIV);
-        }
+        window.total -= window.x[c];
+        window.x[c] = m;
+        window.total += m;
+        window.avg = (window.total >> SAMPLES_DIV);
 
         if (delta > KEY_LEVEL) {
-            xprintf("S%04x\n\r", delta);
+            xprintf("D%04x\n\r", delta);
             return 1;
         }
     }

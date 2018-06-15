@@ -27,15 +27,15 @@
 /*
  * Auto turn off in seconds. Set to 0 to disable auto turn off
  */
-#define AUTO_OFF_S            7200
+#define AUTO_OFF_S            3600
 
 #if AUTO_OFF_S > 0xffff
 #error Maximum AUTO_OFF_S is 65535
 #endif
 
 enum {
-    LAMP_IDLE = 0,
-    LAMP_TOUCHED,
+    LAMP_RESET = 0,
+    LAMP_IDLE,
     LAMP_ACTION
 };
 
@@ -51,6 +51,7 @@ struct window {
 };
 typedef struct window window_t;
 
+static void reset_window(void);
 static uint8_t detect(uint8_t pin);
 static uint16_t measure(uint8_t pin);
 
