@@ -8,6 +8,10 @@ custom pcb is installed in between the lamp power supply and the lamp. The
 MSP430 detects touches using a sensor pad in the base of the lamp, under the
 ABS cover.
 
+![PCB Top](pictures/pcb_top.jpg)
+![PCB Bottom](pictures/pcb_bottom.jpg)
+![Jansjo on nightstand](pictures/jansjo.jpg)
+
 Features:
 - Uses WDT to gate measurements, PinOsc in GPIO input structure, so low power
 - Uses an averaging window as a moving baseline, allowing gradual drift
