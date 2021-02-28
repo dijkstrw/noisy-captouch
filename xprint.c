@@ -110,13 +110,13 @@ xvprintf(const char *fmt, va_list va)
 
             case 'u':
             case 'd':
-                len = itoa(va_arg(va, uint16_t), 10, 0, (ch == 'u'), bf, zero_pad);
+                len = itoa(va_arg(va, unsigned int), 10, 0, (ch == 'u'), bf, zero_pad);
                 uart_send_array((uint8_t *)bf, len);
                 break;
 
             case 'x':
             case 'X':
-                len = itoa(va_arg(va, uint16_t), 16, (ch == 'X'), 1, bf, zero_pad);
+                len = itoa(va_arg(va, unsigned int), 16, (ch == 'X'), 1, bf, zero_pad);
                 uart_send_array((uint8_t *)bf, len);
                 break;
 

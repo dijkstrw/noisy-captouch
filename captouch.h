@@ -21,7 +21,7 @@
 /*
  * Total idle loop = 2 x measure interval + 1 x delay interval
  */
-#define LOOPTIME              ((2*8)+43)
+#define LOOPTIME              ((4*8)+43)
 #define LOOPS_1S              (1000 / LOOPTIME)
 
 /*

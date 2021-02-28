@@ -35,6 +35,7 @@
  */
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <msp430.h>
 #include "captouch.h"
 #include "uart.h"
@@ -47,7 +48,7 @@
  * compared to the moving average before we indicate that a person has keyed
  * the sensor.
  */
-#define KEY_LEVEL       0x200
+#define KEY_LEVEL       0x100
 
 uint8_t lamp;
 uint8_t state;
@@ -155,7 +156,7 @@ main(void)
                 timer,
                 window.avg,
                 window.x[window.current],
-                (window.avg - window.x[window.current]),
+                abs(window.avg - window.x[window.current]),
                 lamp);
 
         WDTCTL = WDT_DELAY_INTERVAL;
@@ -241,8 +242,7 @@ detect(uint8_t pin)
     return 0;
 }
 
-#pragma vector=WDT_VECTOR
-__interrupt void watchdog_timer(void)
+void __attribute__((interrupt(WDT_VECTOR))) watchdog_timer(void)
 {
     LPM3_EXIT;
 }

@@ -3,7 +3,7 @@ Q		:= @
 NULL		:= 2>/dev/null
 endif
 
-PREFIX		?= msp430
+PREFIX		?= msp430-elf
 CC		:= $(PREFIX)-gcc
 OBJCOPY		:= $(PREFIX)-objcopy
 OBJDUMP		:= $(PREFIX)-objdump
@@ -12,7 +12,8 @@ MSPDEBUG        := mspdebug
 MSPDEBUG_DRIVER ?= rf2500
 
 OBJS		+= $(BINARY).o
-CFLAGS 		=-Os -g -Wall
+CFLAGS 		=-Os -g -Wall -I/opt/ti/msp430/gcc/include
+LDFLAGS         =-L/opt/ti/msp430/gcc/include
 
 .SUFFIXES: .elf .list .map
 .SECONDEXPANSION:
@@ -31,7 +32,7 @@ size: $(BINARY).size
 
 %.elf %.map: $(OBJS)
 	@printf "  LD      $(*).elf\n"
-	$(Q)$(CC) $(CFLAGS) $(ARCH_FLAGS) -Wl,-Map,$(*).map -o $(*).elf $(OBJS)
+	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) $(ARCH_FLAGS) -Wl,-Map,$(*).map -o $(*).elf $(OBJS)
 
 %.list: %.elf
 	@printf "  OBJDUMP $(*).list\n"

@@ -72,8 +72,7 @@ uart_putc(uint8_t c)
     while ( CCTL0 & CCIE );  /* Wait for previous TX completion */
 }
 
-#pragma vector=TIMER0_A0_VECTOR
-__interrupt void
+void __attribute__((interrupt(TIMER0_A0_VECTOR)))
 Timer_A(void)
 {
     CCR0 += BIT_TIME;

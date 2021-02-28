@@ -1,0 +1,3 @@
+PATH=/opt/ti/msp430/gcc/bin:$PATH
+export PATH
+cd /mnt
