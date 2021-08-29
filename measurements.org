@@ -21,3 +21,15 @@ Some thoughts:
   this filter the 50Hz hum is gone.
 
   Schematic has been updated with a 805 places for a R C in the sensor path.
+
+- Improve detection of touch by:
+  - Only considering an average over the last x measurements as new data
+  - Taking the differential between the new and the last data
+  - And if that diff is large enough add to an integrand
+  - Leak the integrand away over time, enforce that a touch needs to
+    happen within a number of seconds
+
+  The diff and int can be bounded to ensure that small changes (diff)
+  accumulate. The average should filter away most drift. The integrand
+  makes sure that a number of small changes over time are counted
+  together as a touch.

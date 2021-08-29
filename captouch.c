@@ -41,15 +41,6 @@
 #include "uart.h"
 #include "xprint.h"
 
-/*
- * Pin oscillations are counted on the capacitive touch pin. If more
- * capacitance is present, the frequency measured (the number of pin
- * oscillations seen) drop. This defines by how much they must drop when
- * compared to the moving average before we indicate that a person has keyed
- * the sensor.
- */
-#define KEY_LEVEL       0x100
-
 uint8_t lamp;
 uint8_t state;
 
@@ -58,10 +49,25 @@ int16_t timer = 0;
 window_t window;
 
 static void
+emit_state(void) {
+    xprintf("S%01x p%01x m%04x D%04x A%04x T%04x%04x I%04x,%04x \r\n",
+            state,
+            lamp,
+            timer,
+            window.derivative,
+            window.avg,
+            (uint16_t )(window.total >> 16),
+            (uint16_t)(window.total & 0xFFFF),
+            window.integral[0],
+            window.integral[1]);
+}
+
+static void
 lamp_on(void)
 {
     LED_OUT |= LAMP_PIN;
     lamp = 1;
+    emit_state();
 }
 
 static void
@@ -69,6 +75,7 @@ lamp_off(void)
 {
     LED_OUT &= ~LAMP_PIN;
     lamp = 0;
+    emit_state();
 }
 
 int
@@ -89,39 +96,37 @@ main(void)
 
     uart_configure();
     _BIS_SR(GIE);
+    __no_operation();
 
     reset_window();
     lamp = 0;
     state = LAMP_RESET;
 
     for (;;) { /* FOREVER */
+        touch = detect();
+
         switch (state) {
         case LAMP_RESET:
-            /* 0. Reset measurement window to ensure correct detection for next touch */
-            if (window.startup) {
-                LED_OUT |= BOOT_PIN;
-                detect(TOUCH_PIN);
-                xprintf("%04x-%04x=%04x =>L%01x\r\n",
-                        window.avg,
-                        window.x[window.current],
-                        (window.avg - window.x[window.current]),
-                        lamp);
+            /* 0. After boot and after a change, take one second to settle */
+            LED_OUT |= BOOT_PIN;
+            loops++;
+            if (loops > LOOPS_1S) {
+                loops -= LOOPS_1S;
                 LED_OUT &= ~BOOT_PIN;
-                continue;
-            } else {
                 state = LAMP_IDLE;
+                emit_state();
             }
             break;
-
+                
         case LAMP_IDLE:
-            /* 1. Determine if lamp is touched */
-            touch = detect(TOUCH_PIN);
+            /* 1. In idle, countdown on time or "detect" touch */
             if (lamp) {
                 if (timer > 0) {
                     loops++;
                     while (loops > LOOPS_1S) {
                         loops -= LOOPS_1S;
                         timer--;
+                        emit_state();
                     }
                 } else {
                     lamp_off();
@@ -136,7 +141,7 @@ main(void)
             break;
 
         case LAMP_ACTION:
-            /* 2. Actuate */
+            /* 2. Change lamp state and revert to RESET */
             lamp ^=1;
             if (lamp) {
                 lamp_on();
@@ -145,20 +150,11 @@ main(void)
                 lamp_off();
                 timer = 0;
             }
-            reset_window();
             state = LAMP_RESET;
+            loops = 0;
             break;
         }
-
-
-        xprintf("S%01x %04x: %04x-%04x=%04x =>L%01x\r\n",
-                state,
-                timer,
-                window.avg,
-                window.x[window.current],
-                abs(window.avg - window.x[window.current]),
-                lamp);
-
+        
         WDTCTL = WDT_DELAY_INTERVAL;
         LPM3;
     }
@@ -166,9 +162,12 @@ main(void)
 
 static void
 reset_window() {
-    window.startup = 1;
-    window.current = 0;
-    window.total = 0;
+    uint16_t measurement = measure(TOUCH_PIN);
+
+    window.total = (measurement << SAMPLES_DIV);
+    window.last = window.avg = measurement;
+
+    window.derivative = window.integral[0] = window.integral[1] = 0;
 }
 
 static uint16_t
@@ -209,37 +208,48 @@ measure(uint8_t pin) {
 }
 
 static uint8_t
-detect(uint8_t pin)
+detect()
 {
-    uint8_t c = window.current;
-    uint16_t m = measure(pin);
-    int16_t delta;
+    uint16_t measurement = measure(TOUCH_PIN);
 
-    c = (c + 1) % SAMPLES;
-    window.current = c;
+    /* 
+     * Construct an approximate moving average, where some granularity
+     * is sacrificed for space 
+     */
+    window.total -= window.avg;
+    window.total += measurement;
+    window.avg = (window.total >> SAMPLES_DIV);
 
-    if (window.startup) {
-        window.x[c] = m;
-        window.total += window.x[c];
-        if (c == 0) {
-            window.startup = 0;
-            window.avg = (window.total >> SAMPLES_DIV);
-        }
+    /*
+     * Now look at the amount of change
+     */
+    window.derivative = window.avg - window.last;
+    window.last = window.avg;
+
+    /*
+     * An increase of capacitance means that less full counts of the
+     * oscillator will be counted; so a touch => a negative
+     * derivative 
+     */
+    if (window.derivative < DERIVATIVE_THRESHOLD) {
+        window.integral[1] = window.integral[0] - window.derivative;
     } else {
-        delta = window.avg - m;
-
-        window.total -= window.x[c];
-        window.x[c] = m;
-        window.total += m;
-        window.avg = (window.total >> SAMPLES_DIV);
-
-        if (delta > KEY_LEVEL) {
-            xprintf("D%04x\n\r", delta);
-            return 1;
-        }
+        window.integral[1] = window.integral[0];
     }
 
-    return 0;
+    /*
+     * Now look at the accumulated change
+     */
+    if (window.integral[1] > INTEGRAL_THRESHOLD) {
+        xprintf("touch %08x\r\n", window.integral[1]);
+        emit_state();
+        window.integral[0] = window.integral[1] = 0;
+        return 1;
+    } else {
+        /* No touch -- leak away some of our integrand */
+        window.integral[0] = (int32_t)(window.integral[1] * LEAKAGE_FACTOR);
+        return 0;
+    }
 }
 
 void __attribute__((interrupt(WDT_VECTOR))) watchdog_timer(void)
