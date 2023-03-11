@@ -26,7 +26,7 @@ list: $(BINARY).list
 flash: $(BINARY).flash
 size: $(BINARY).size
 
-%.o: %.c
+%.o: %.c %.h
 	@printf "  CC      $(*).c\n"
 	$(Q)$(CC) $(CFLAGS) $(ARCH_FLAGS) -o $(*).o -c $(*).c
 

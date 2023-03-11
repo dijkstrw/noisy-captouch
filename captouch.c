@@ -45,24 +45,134 @@ uint8_t lamp;
 uint8_t state;
 
 uint16_t loops = 0;
-int16_t timer = 0;
+int16_t on_timer = 0;
 window_t window;
 
-static void
-emit_state(void) {
-    xprintf("S%01x p%01x m%04x D%04x A%04x T%04x%04x I%04x,%04x \r\n",
-            state,
-            lamp,
-            timer,
-            window.derivative,
-            window.avg,
-            (uint16_t )(window.total >> 16),
-            (uint16_t)(window.total & 0xFFFF),
-            window.integral[0],
-            window.integral[1]);
+uint16_t
+measure(uint8_t pin)
+{
+    uint16_t result;
+
+    /* Ground the input */
+    P2SEL &= ~pin;
+    P2DIR &= ~pin;
+    P2OUT &= ~pin;
+    P2REN |= pin;
+    P2REN &= ~pin;
+    WDTCTL = WDT_GROUND_INTERVAL;
+    _BIS_SR(LPM0_bits + GIE);
+
+    /* Configure timer to capture oscillator */
+    TA0CTL = TASSEL_3 + MC_2;           /* INCLK from Pin oscillator, continous count mode to 0xFFFF */
+    TA0CCTL1 = CM_3 + CCIS_2 + CAP;     /* Capture on Rising and Falling Edge,Capture input GND,Capture mode */
+
+    /*
+     * Configure Ports for relaxation oscillator
+     * P2SEL2 allows Timer_A to receive it's clock from a GPIO
+     */
+    P2DIR &= ~ pin;
+    P2SEL &= ~ pin;
+    P2SEL2 |= pin;
+
+    /* Setup Gate Timer */
+    WDTCTL = WDT_MEASURE_INTERVAL;
+    TA0CTL |= TACLR;                    /* Reset timer */
+    _BIS_SR(LPM0_bits + GIE);
+    TA0CCTL1 ^= CCIS0;                  /* Toggle the counter capture input to capture count using TACCR1 */
+    result = TACCR1;
+    WDTCTL = WDTPW + WDTHOLD;
+    P2SEL2 &= ~ pin;                    /* Disable Oscillator */
+
+    /* Ground the input */
+    P2SEL &= ~pin;
+    P2DIR &= ~pin;
+    P2OUT &= ~pin;
+    P2REN |= pin;
+    P2REN &= ~pin;
+
+    return result;
 }
 
-static void
+uint8_t
+detect()
+{
+    uint16_t measurement = measure(TOUCH_PIN);
+
+    /*
+     * Keep track of how many measurements we have between emitting
+     * state
+     */
+    window.times = window.times + 1;
+
+    /*
+     * Look at the amount of change
+     */
+    window.derivative = window.avg - measurement;
+
+    /*
+     * An increase of capacitance means that less full counts of the
+     * oscillator will be counted; so a touch => a positive
+     * derivative
+     */
+    if (window.derivative > DERIVATIVE_THRESHOLD) {
+        window.integral += DERIVATIVE_THRESHOLD;
+    } else {
+        /*
+         * Make current measurement part of the moving average
+         */
+        window.sum -= window.data[window.index];
+        window.data[window.index] = measurement;
+        window.sum += window.data[window.index];
+        window.index = (window.index + 1 ) % SAMPLES;
+
+        window.avg = window.sum >> SAMPLES_DIV;
+    }
+
+    /*
+     * Now look at the accumulated change
+     */
+    if (window.integral > INTEGRAL_THRESHOLD) {
+        emit_state();
+        xprintf("touch\r\n");
+        window.integral = 0;
+        return 1;
+    } else {
+        /* No touch -- leak away some of our integrand */
+        if (window.integral > LEAKAGE_FACTOR) {
+            window.integral -= LEAKAGE_FACTOR;
+        } else {
+            window.integral = 0;
+        }
+
+        return 0;
+    }
+}
+
+void
+emit_state(void)
+{
+    xprintf("S%01x p%01x o%04x D%04x I%04x A%04x S%04x%04x t%04x \r\n",
+            state,
+            lamp,
+            on_timer,
+            window.derivative,
+            window.integral,
+            window.avg,
+            (uint16_t )(window.sum >> 16),
+            (uint16_t)(window.sum & 0xFFFF),
+            window.times);
+    window.times = 0;
+}
+
+void
+lamp_off(void)
+{
+    LED_OUT &= ~LAMP_PIN;
+    lamp = 0;
+    emit_state();
+}
+
+void
 lamp_on(void)
 {
     LED_OUT |= LAMP_PIN;
@@ -70,12 +180,16 @@ lamp_on(void)
     emit_state();
 }
 
-static void
-lamp_off(void)
+void
+reset_window()
 {
-    LED_OUT &= ~LAMP_PIN;
-    lamp = 0;
-    emit_state();
+    window.sum = window.derivative = window.integral = window.times = 0;
+
+    for (window.index = 0; window.index < SAMPLES; window.index++) {
+        window.data[window.index] = measure(TOUCH_PIN);
+        window.sum += window.data[window.index];
+    }
+    window.avg = window.sum >> SAMPLES_DIV;
 }
 
 int
@@ -114,25 +228,26 @@ main(void)
                 loops -= LOOPS_1S;
                 LED_OUT &= ~BOOT_PIN;
                 state = LAMP_IDLE;
+                reset_window();
                 emit_state();
             }
             break;
-                
+
         case LAMP_IDLE:
             /* 1. In idle, countdown on time or "detect" touch */
             if (lamp) {
-                if (timer > 0) {
+                if (on_timer > 0) {
                     loops++;
                     while (loops > LOOPS_1S) {
                         loops -= LOOPS_1S;
-                        timer--;
+                        on_timer--;
                         emit_state();
                     }
                 } else {
                     lamp_off();
                 }
             } else {
-                timer = 0;
+                on_timer = 0;
             }
 
             if (touch) {
@@ -145,110 +260,18 @@ main(void)
             lamp ^=1;
             if (lamp) {
                 lamp_on();
-                timer = AUTO_OFF_S;
+                on_timer = AUTO_OFF_S;
             } else {
                 lamp_off();
-                timer = 0;
+                on_timer = 0;
             }
             state = LAMP_RESET;
             loops = 0;
             break;
         }
-        
+
         WDTCTL = WDT_DELAY_INTERVAL;
         LPM3;
-    }
-}
-
-static void
-reset_window() {
-    uint16_t measurement = measure(TOUCH_PIN);
-
-    window.total = (measurement << SAMPLES_DIV);
-    window.last = window.avg = measurement;
-
-    window.derivative = window.integral[0] = window.integral[1] = 0;
-}
-
-static uint16_t
-measure(uint8_t pin) {
-    uint16_t result;
-
-    /* Ground the input */
-    P2SEL &= ~pin;
-    P2DIR &= ~pin;
-    P2OUT &= ~pin;
-    P2REN |= pin;
-    P2REN &= ~pin;
-    WDTCTL = WDT_MEASURE_INTERVAL;
-    _BIS_SR(LPM0_bits + GIE);
-
-    /* Configure timer to capture oscillator */
-    TA0CTL = TASSEL_3 + MC_2;           /* INCLK from Pin oscillator, continous count mode to 0xFFFF */
-    TA0CCTL1 = CM_3 + CCIS_2 + CAP;     /* Capture on Rising and Falling Edge,Capture input GND,Capture mode */
-
-    /*
-     * Configure Ports for relaxation oscillator
-     * P2SEL2 allows Timer_A to receive it's clock from a GPIO
-     */
-    P2DIR &= ~ pin;
-    P2SEL &= ~ pin;
-    P2SEL2 |= pin;
-
-    /* Setup Gate Timer */
-    WDTCTL = WDT_MEASURE_INTERVAL;
-    TA0CTL |= TACLR;                    /* Reset timer */
-    _BIS_SR(LPM0_bits + GIE);
-    TA0CCTL1 ^= CCIS0;                  /* Toggle the counter capture input to capture count using TACCR1 */
-    result = TACCR1;
-    WDTCTL = WDTPW + WDTHOLD;
-    P2SEL2 &= ~ pin;                    /* Disable Oscillator */
-
-    return result;
-}
-
-static uint8_t
-detect()
-{
-    uint16_t measurement = measure(TOUCH_PIN);
-
-    /* 
-     * Construct an approximate moving average, where some granularity
-     * is sacrificed for space 
-     */
-    window.total -= window.avg;
-    window.total += measurement;
-    window.avg = (window.total >> SAMPLES_DIV);
-
-    /*
-     * Now look at the amount of change
-     */
-    window.derivative = window.avg - window.last;
-    window.last = window.avg;
-
-    /*
-     * An increase of capacitance means that less full counts of the
-     * oscillator will be counted; so a touch => a negative
-     * derivative 
-     */
-    if (window.derivative < DERIVATIVE_THRESHOLD) {
-        window.integral[1] = window.integral[0] - window.derivative;
-    } else {
-        window.integral[1] = window.integral[0];
-    }
-
-    /*
-     * Now look at the accumulated change
-     */
-    if (window.integral[1] > INTEGRAL_THRESHOLD) {
-        xprintf("touch %08x\r\n", window.integral[1]);
-        emit_state();
-        window.integral[0] = window.integral[1] = 0;
-        return 1;
-    } else {
-        /* No touch -- leak away some of our integrand */
-        window.integral[0] = (int32_t)(window.integral[1] * LEAKAGE_FACTOR);
-        return 0;
     }
 }
 

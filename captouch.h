@@ -1,6 +1,8 @@
 #ifndef _CAPTOUCH_H
 #define _CAPTOUCH_H
 
+#include <stdint.h>
+
 /* WDT delays when clocked by fACLK @ 12Khz in ms */
 #define WDT_ADLY_2731        (WDTPW+WDTTMSEL+WDTCNTCL+WDTSSEL)
 #define WDT_ADLY_683         (WDTPW+WDTTMSEL+WDTCNTCL+WDTSSEL+WDTIS0)
@@ -15,13 +17,14 @@
 #define LED_DIR              P1DIR
 
 /* Watchdog timer intervals, indicating clocks used and time in ms */
-#define WDT_MEASURE_INTERVAL WDT_MDLY_8
+#define WDT_GROUND_INTERVAL  WDT_MDLY_32
+#define WDT_MEASURE_INTERVAL WDT_MDLY_32
 #define WDT_DELAY_INTERVAL   WDT_ADLY_5_3
 
 /*
- * Total idle loop = 2 x measure interval + 1 x delay interval
+ * Total idle loop = ground-interval + measure-interval + delay interval
  */
-#define LOOPTIME             ((2*8) + 5)
+#define LOOPTIME             (32 + 32 + 5)
 #define LOOPS_1S             (1000 / LOOPTIME)
 
 /*
@@ -39,7 +42,7 @@ enum {
     LAMP_ACTION
 };
 
-/* Sampling window definition 
+/* Sampling window definition
  *
  * The sampling window is 1 << SAMPLES_DIV items large. This window is
  * used to calculate a moving average. The moving average must differ
@@ -49,22 +52,28 @@ enum {
  * happened. When a touch did not happen, the integrand is updated
  * with LEAKAGE_FACTOR to ensure it slowly drains away.
  */
-#define SAMPLES_DIV          5
-#define DERIVATIVE_THRESHOLD (int16_t)(-8)
-#define INTEGRAL_THRESHOLD   0x20
-#define LEAKAGE_FACTOR       0.80f
+#define SAMPLES_DIV          4
+#define SAMPLES              (1<<SAMPLES_DIV)
+#define DERIVATIVE_THRESHOLD 0x200
+#define INTEGRAL_THRESHOLD   0x500
+#define LEAKAGE_FACTOR       0x10
 
 struct window {
-    int32_t total;
+    int32_t sum;
+    uint16_t times;
+    uint16_t data[SAMPLES];
     int16_t avg;
-    int16_t last;
     int16_t derivative;
-    int16_t integral[2];
+    int16_t integral;
+    int8_t index;
 };
 typedef struct window window_t;
 
-static void reset_window(void);
-static uint8_t detect();
-static uint16_t measure(uint8_t pin);
+uint16_t measure(uint8_t pin);
+uint8_t detect();
+void emit_state(void);
+void lamp_off(void);
+void lamp_on(void);
+void reset_window(void);
 
 #endif
