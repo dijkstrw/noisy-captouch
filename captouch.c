@@ -59,6 +59,7 @@ measure(uint8_t pin)
     P2OUT &= ~pin;
     P2REN |= pin;
     P2REN &= ~pin;
+
     WDTCTL = WDT_GROUND_INTERVAL;
     _BIS_SR(LPM0_bits + GIE);
 
@@ -70,8 +71,8 @@ measure(uint8_t pin)
      * Configure Ports for relaxation oscillator
      * P2SEL2 allows Timer_A to receive it's clock from a GPIO
      */
-    P2DIR &= ~ pin;
-    P2SEL &= ~ pin;
+    P2DIR &= ~pin;
+    P2SEL &= ~pin;
     P2SEL2 |= pin;
 
     /* Setup Gate Timer */
@@ -80,9 +81,9 @@ measure(uint8_t pin)
     _BIS_SR(LPM0_bits + GIE);
     TA0CCTL1 ^= CCIS0;                  /* Toggle the counter capture input to capture count using TACCR1 */
     result = TACCR1;
-    WDTCTL = WDTPW + WDTHOLD;
-    P2SEL2 &= ~ pin;                    /* Disable Oscillator */
+    P2SEL2 &= ~pin;                     /* Disable Oscillator */
 
+    WDTCTL = WDTPW + WDTHOLD;
     /* Ground the input */
     P2SEL &= ~pin;
     P2DIR &= ~pin;
@@ -132,8 +133,6 @@ detect()
      * Now look at the accumulated change
      */
     if (window.integral > INTEGRAL_THRESHOLD) {
-        emit_state();
-        xprintf("touch\r\n");
         window.integral = 0;
         return 1;
     } else {
@@ -183,12 +182,17 @@ lamp_on(void)
 void
 reset_window()
 {
-    window.sum = window.derivative = window.integral = window.times = 0;
+    window.sum = window.derivative = window.integral = 0;
 
     for (window.index = 0; window.index < SAMPLES; window.index++) {
         window.data[window.index] = measure(TOUCH_PIN);
         window.sum += window.data[window.index];
+        xprintf("Reset window %02x: S%04x%04x \r\n",
+                window.index,
+                (uint16_t )(window.sum >> 16),
+                (uint16_t)(window.sum & 0xFFFF));
     }
+    window.times = 0;
     window.avg = window.sum >> SAMPLES_DIV;
 }
 
@@ -212,7 +216,6 @@ main(void)
     _BIS_SR(GIE);
     __no_operation();
 
-    reset_window();
     lamp = 0;
     state = LAMP_RESET;
 
@@ -225,8 +228,8 @@ main(void)
             LED_OUT |= BOOT_PIN;
             loops++;
             if (loops > LOOPS_1S) {
-                loops -= LOOPS_1S;
                 LED_OUT &= ~BOOT_PIN;
+                loops -= LOOPS_1S;
                 state = LAMP_IDLE;
                 reset_window();
                 emit_state();

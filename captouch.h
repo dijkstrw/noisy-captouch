@@ -54,9 +54,9 @@ enum {
  */
 #define SAMPLES_DIV          4
 #define SAMPLES              (1<<SAMPLES_DIV)
-#define DERIVATIVE_THRESHOLD 0x200
-#define INTEGRAL_THRESHOLD   0x500
-#define LEAKAGE_FACTOR       0x10
+#define DERIVATIVE_THRESHOLD 0x50
+#define INTEGRAL_THRESHOLD   (3 * DERIVATIVE_THRESHOLD)
+#define LEAKAGE_FACTOR       (DERIVATIVE_THRESHOLD / 4)
 
 struct window {
     int32_t sum;
