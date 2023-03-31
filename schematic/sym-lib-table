@@ -1,0 +1,7 @@
+(sym_lib_table
+  (lib (name "msp430")(type "Legacy")(uri "${KIPRJMOD}/msp430.lib")(options "")(descr ""))
+  (lib (name "capacitive_touch")(type "Legacy")(uri "${KIPRJMOD}/capacitive_touch.lib")(options "")(descr ""))
+  (lib (name "Regulator_Linear")(type "KiCad")(uri "${KICAD6_SYMBOL_DIR}/Regulator_Linear.kicad_sym")(options "")(descr ""))
+  (lib (name "Device")(type "KiCad")(uri "${KICAD6_SYMBOL_DIR}/Device.kicad_sym")(options "")(descr ""))
+  (lib (name "Connectors")(type "KiCad")(uri "${KICAD6_SYMBOL_DIR}/Connector.kicad_sym")(options "")(descr ""))
+)
