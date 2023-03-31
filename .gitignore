@@ -1,0 +1,5 @@
+*.o
+captouch.elf
+captouch.list
+captouch.map
+captouch.s

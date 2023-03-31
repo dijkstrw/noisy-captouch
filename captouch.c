@@ -133,6 +133,7 @@ detect()
      * Now look at the accumulated change
      */
     if (window.integral > INTEGRAL_THRESHOLD) {
+        emit_state();
         window.integral = 0;
         return 1;
     } else {
@@ -217,6 +218,7 @@ main(void)
     __no_operation();
 
     lamp = 0;
+    reset_window();
     state = LAMP_RESET;
 
     for (;;) { /* FOREVER */

@@ -26,6 +26,7 @@
  */
 #define LOOPTIME             (32 + 32 + 5)
 #define LOOPS_1S             (1000 / LOOPTIME)
+#define LOOPS_5S             (5000 / LOOPTIME)
 
 /*
  * Auto turn off in seconds. Set to 0 to disable auto turn off
@@ -54,8 +55,8 @@ enum {
  */
 #define SAMPLES_DIV          4
 #define SAMPLES              (1<<SAMPLES_DIV)
-#define DERIVATIVE_THRESHOLD 0x50
-#define INTEGRAL_THRESHOLD   (3 * DERIVATIVE_THRESHOLD)
+#define DERIVATIVE_THRESHOLD 0x300
+#define INTEGRAL_THRESHOLD   (DERIVATIVE_THRESHOLD * 4)
 #define LEAKAGE_FACTOR       (DERIVATIVE_THRESHOLD / 4)
 
 struct window {
